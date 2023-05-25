@@ -10,20 +10,13 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Sets a value
-    Set {
-        key: String,
-        value: String,
-    },
+    Set { key: String, value: String },
 
     /// Gets a value
-    Get {
-        key: String,
-    },
+    Get { key: String },
 
     /// Removes a value
-    Rm {
-        key: String,
-    },
+    Rm { key: String },
 }
 
 fn main() {

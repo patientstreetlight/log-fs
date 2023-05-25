@@ -1,20 +1,13 @@
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct KvStore {
     store: HashMap<String, String>,
 }
 
-impl Default for KvStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl KvStore {
-    pub fn new() -> KvStore {
-        KvStore {
-            store: HashMap::new()
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn get(&self, s: String) -> Option<String> {

@@ -1,34 +1,56 @@
+use std::{
+    fs::{File, OpenOptions},
+    io::Write,
+    os::unix::prelude::FileExt,
+    path::PathBuf,
+};
+
+use anyhow::Ok;
+pub use error::{Error, Result};
+use serde::{Deserialize, Serialize};
+
 mod error;
 
-use std::{collections::HashMap, path::PathBuf};
-
-pub use error::{Error, Result};
-
-#[derive(Default)]
 pub struct KvStore {
-    store: HashMap<String, String>,
+    file: File,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum LogCmd {
+    Set { key: String, value: String },
+    Rm { key: String },
 }
 
 impl KvStore {
-    pub fn open(_path: impl Into<PathBuf>) -> Result<KvStore> {
-        unimplemented!()
-    }
-
-    pub fn new() -> Self {
-        Self::default()
+    pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
+        let mut path_buf: PathBuf = path.into();
+        path_buf.push("foo.log");
+        let file = OpenOptions::new()
+            // XXX is the read(true) needed?
+            .read(true)
+            .append(true)
+            .create(true)
+            .open(path_buf)?;
+        Ok(KvStore { file })
     }
 
     pub fn get(&self, s: String) -> Result<Option<String>> {
-        Ok(self.store.get(&s).cloned())
+        unimplemented!()
     }
 
     pub fn remove(&mut self, s: String) -> Result<()> {
-        self.store.remove(&s);
+        let file = &mut self.file;
+        let cmd = LogCmd::Rm { key: s };
+        let serialized = serde_json::to_string(&cmd).unwrap();
+        writeln!(file, "{serialized}")?;
         Ok(())
     }
 
     pub fn set(&mut self, k: String, v: String) -> Result<()> {
-        self.store.insert(k, v);
+        let file = &mut self.file;
+        let cmd = LogCmd::Set { key: k, value: v };
+        let serialized = serde_json::to_string(&cmd).unwrap();
+        writeln!(file, "{serialized}")?;
         Ok(())
     }
 }

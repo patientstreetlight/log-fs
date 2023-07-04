@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use kvs::KvStore;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -19,20 +20,21 @@ enum Commands {
     Rm { key: String },
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    match &cli.command {
-        Commands::Set { .. } => {
-            eprintln!("unimplemented");
-            std::process::exit(1);
+    let mut store = KvStore::open(std::env::current_dir()?)?;
+    match cli.command {
+        Commands::Set { key, value } => {
+            store.set(key, value)?;
         }
-        Commands::Get { .. } => {
-            eprintln!("unimplemented");
-            std::process::exit(1);
+        Commands::Get { key } => {
+            let v = store.get(key)?;
+            let val = v.as_deref().unwrap_or("Key not found");
+            println!("{val}");
         }
-        Commands::Rm { .. } => {
-            eprintln!("unimplemented");
-            std::process::exit(1);
+        Commands::Rm { key } => {
+            store.remove(key)?;
         }
     }
+    Ok(())
 }

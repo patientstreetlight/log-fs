@@ -14,7 +14,7 @@ mod error;
 
 pub struct KvStore {
     file: File,
-    contents: HashMap<String, String>,
+    index: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -39,28 +39,28 @@ impl KvStore {
     pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
         let file = open_log_file(path)?;
         let reader = BufReader::new(&file);
-        let mut contents = HashMap::new();
+        let mut index = HashMap::new();
         for line in reader.lines() {
             let line = line?;
             let cmd: LogCmd = serde_json::from_str(&line)?;
             match cmd {
                 LogCmd::Set { key, value } => {
-                    contents.insert(key, value);
+                    index.insert(key, value);
                 }
                 LogCmd::Rm { key } => {
-                    contents.remove(&key);
+                    index.remove(&key);
                 }
             }
         }
-        Ok(KvStore { file, contents })
+        Ok(KvStore { file, index })
     }
 
     pub fn get(&self, s: String) -> Result<Option<String>> {
-        Ok(self.contents.get(&s).cloned())
+        Ok(self.index.get(&s).cloned())
     }
 
     pub fn remove(&mut self, s: String) -> Result<()> {
-        if self.contents.remove(&s).is_none() {
+        if self.index.remove(&s).is_none() {
             return not_found();
         }
         let file = &mut self.file;
@@ -78,7 +78,7 @@ impl KvStore {
         };
         let serialized = serde_json::to_string(&cmd).unwrap();
         writeln!(file, "{serialized}")?;
-        self.contents.insert(k, v);
+        self.index.insert(k, v);
         Ok(())
     }
 }

@@ -1,7 +1,8 @@
 use std::{
-    fs::{File, OpenOptions},
-    io::{Write, Read, BufReader, BufRead},
-    path::PathBuf, collections::{HashSet, HashMap},
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader, Write},
+    path::PathBuf,
 };
 
 use anyhow::Ok;
@@ -22,25 +23,26 @@ enum LogCmd {
     Rm { key: String },
 }
 
-impl KvStore {
-    fn new(f: File) -> Self {
-        Self { file: f, contents: HashMap::new() }
-    }
+fn open_log_file(dir_path: impl Into<PathBuf>) -> Result<File> {
+    let mut path_buf: PathBuf = dir_path.into();
+    path_buf.push("foo.log");
+    let file = File::options()
+        // XXX is the read(true) needed?
+        .read(true)
+        .append(true)
+        .create(true)
+        .open(path_buf)?;
+    Ok(file)
+}
 
+impl KvStore {
     pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
-        let mut path_buf: PathBuf = path.into();
-        path_buf.push("foo.log");
-        let file = OpenOptions::new()
-            // XXX is the read(true) needed?
-            .read(true)
-            .append(true)
-            .create(true)
-            .open(path_buf)?;
+        let file = open_log_file(path)?;
         let reader = BufReader::new(&file);
         let mut contents = HashMap::new();
         for line in reader.lines() {
-            let line = line.unwrap();
-            let cmd: LogCmd = serde_json::from_str(&line).unwrap();
+            let line = line?;
+            let cmd: LogCmd = serde_json::from_str(&line)?;
             match cmd {
                 LogCmd::Set { key, value } => {
                     contents.insert(key, value);
@@ -50,10 +52,7 @@ impl KvStore {
                 }
             }
         }
-        Ok(KvStore {
-            file,
-            contents,
-        })
+        Ok(KvStore { file, contents })
     }
 
     pub fn get(&self, s: String) -> Result<Option<String>> {
@@ -73,7 +72,10 @@ impl KvStore {
 
     pub fn set(&mut self, k: String, v: String) -> Result<()> {
         let file = &mut self.file;
-        let cmd = LogCmd::Set { key: k.clone(), value: v.clone() };
+        let cmd = LogCmd::Set {
+            key: k.clone(),
+            value: v.clone(),
+        };
         let serialized = serde_json::to_string(&cmd).unwrap();
         writeln!(file, "{serialized}")?;
         self.contents.insert(k, v);

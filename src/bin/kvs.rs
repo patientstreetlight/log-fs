@@ -33,7 +33,11 @@ fn main() -> anyhow::Result<()> {
             println!("{val}");
         }
         Commands::Rm { key } => {
-            store.remove(key)?;
+            let res = store.remove(key);
+            if let Err(e) = res {
+                println!("{e}");
+                std::process::exit(1);
+            }
         }
     }
     Ok(())
